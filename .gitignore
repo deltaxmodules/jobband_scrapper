@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Secrets / local env
+.env
+.env.*
+
+# Runtime logs
+*.log
+
+# Scraper outputs and state
+data/jobup/*.json
+data/jobup/*.csv
+data/talent/*.json
+data/talent/*.csv
+state.json
+jobup_jobs_master.json
