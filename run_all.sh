@@ -14,6 +14,11 @@ DAYS="${DAYS:-30}"
 JOBUP_STOP_AFTER_SEEN="${JOBUP_STOP_AFTER_SEEN:-40}"
 TALENT_STOP_AFTER_SEEN="${TALENT_STOP_AFTER_SEEN:-120}"
 GE_STOP_AFTER_SEEN="${GE_STOP_AFTER_SEEN:-120}"
+JOBROOM_STOP_AFTER_SEEN="${JOBROOM_STOP_AFTER_SEEN:-120}"
+INDEED_RESULTS_WANTED="${INDEED_RESULTS_WANTED:-1000}"
+LINKEDIN_RESULTS_WANTED="${LINKEDIN_RESULTS_WANTED:-1000}"
+INDEED_TIMEOUT="${INDEED_TIMEOUT:-90}"
+INDEED_RETRIES="${INDEED_RETRIES:-5}"
 RETRY_ERRORS="${RETRY_ERRORS:-1}"
 RUN_PIPELINES="${RUN_PIPELINES:-1}"
 
@@ -34,6 +39,27 @@ echo "[RUN] GE scraper"
   --days "$DAYS" \
   --stop-after-seen "$GE_STOP_AFTER_SEEN"
 
+echo "[RUN] JobRoom scraper"
+"$PYTHON_BIN" jobroom/jobroom.py \
+  --canton GE \
+  --lang fr \
+  --days "$DAYS" \
+  --max-pages 0 \
+  --stop-after-seen "$JOBROOM_STOP_AFTER_SEEN" \
+  --output-json data/jobroom/professions.json
+
+echo "[RUN] Indeed scraper"
+"$PYTHON_BIN" indeed/indeed.py \
+  --search-term "jobs" \
+  --location "Geneva" \
+  --country-indeed "Switzerland" \
+  --days "$DAYS" \
+  --results-wanted "$INDEED_RESULTS_WANTED" \
+  --timeout "$INDEED_TIMEOUT" \
+  --retries "$INDEED_RETRIES" \
+  --site-name "indeed" \
+  --output-json data/indeed/professions.json
+
 if [[ "$RUN_PIPELINES" == "1" ]]; then
   PIPE_FLAGS=()
   if [[ "$RETRY_ERRORS" == "1" ]]; then
@@ -53,6 +79,16 @@ if [[ "$RUN_PIPELINES" == "1" ]]; then
   echo "[RUN] GE professions pipeline"
   "$PYTHON_BIN" ge/professions_pipeline.py \
     --input data/ge/professions.json \
+    "${PIPE_FLAGS[@]}"
+
+  echo "[RUN] JobRoom professions pipeline"
+  "$PYTHON_BIN" jobroom/professions_pipeline.py \
+    --input data/jobroom/professions.json \
+    "${PIPE_FLAGS[@]}"
+
+  echo "[RUN] Indeed professions pipeline"
+  "$PYTHON_BIN" indeed/professions_pipeline.py \
+    --input data/indeed/professions.json \
     "${PIPE_FLAGS[@]}"
 
 fi
