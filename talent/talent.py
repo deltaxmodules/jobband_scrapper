@@ -418,14 +418,18 @@ def main() -> None:
 
     fresh_jobs: list[dict] = []
     max_days = args.days if args.days and args.days > 0 else None
+    fetch_errors = 0
+    dropped_by_days = 0
 
     for idx, link in enumerate(detail_links, start=1):
         try:
             job = fetch_detail(session, link)
         except Exception:
+            fetch_errors += 1
             continue
 
         if not within_days(job.get("posting_date"), max_days):
+            dropped_by_days += 1
             continue
 
         fresh_jobs.append(job)
@@ -435,9 +439,31 @@ def main() -> None:
             time.sleep(args.delay)
 
     filter_lang = not args.allow_non_french
+    before_merge_urls = {
+        str(j.get("url") or "").strip()
+        for j in existing_jobs
+        if str(j.get("url") or "").strip()
+    }
     merged = merge_jobs_by_url(existing_jobs, fresh_jobs, filter_lang=filter_lang)
+    after_merge_urls = {
+        str(j.get("url") or "").strip()
+        for j in merged
+        if str(j.get("url") or "").strip()
+    }
+    added_after_filters = len(after_merge_urls - before_merge_urls)
+    dropped_by_language = max(len(fresh_jobs) - added_after_filters, 0) if filter_lang else 0
 
-    seen_now = set(known_urls) | set(links) | {
+    print(
+        "[DETAIL] "
+        f"ok={len(fresh_jobs)} | "
+        f"erros={fetch_errors} | "
+        f"fora_janela={dropped_by_days} | "
+        f"idioma={dropped_by_language}"
+    )
+
+    # Guarda no state apenas URLs realmente persistidas, para nao "queimar"
+    # links novos quando o detalhe falha ou o registo e descartado temporariamente.
+    seen_now = {
         str(j.get("url") or "").strip() for j in merged if str(j.get("url") or "").strip()
     }
 

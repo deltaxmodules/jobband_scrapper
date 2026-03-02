@@ -436,12 +436,14 @@ def main() -> None:
             break
 
         print(f"  Pagina {page}: {len(items)} links")
+        added_this_page = 0
         for item in items:
             url = str(item.get("url") or "").strip()
             if not url or url in seen_links:
                 continue
             seen_links.add(url)
             links.append(item)
+            added_this_page += 1
 
             if args.stop_after_seen > 0:
                 if url in known_urls:
@@ -453,6 +455,10 @@ def main() -> None:
                     known_streak = 0
 
         if args.stop_after_seen > 0 and known_streak >= args.stop_after_seen:
+            break
+
+        if added_this_page == 0:
+            print(f"  Pagina {page}: 0 links novos (fim)")
             break
 
         if args.delay > 0:
@@ -504,9 +510,8 @@ def main() -> None:
     merged = merge_jobs_by_url(existing_jobs, fresh_jobs)
     filtered = [row for row in merged if within_days(row.get("posting_date"), max_days)]
 
-    seen_now = set(known_urls) | {str(x.get("url") or "").strip() for x in links} | {
-        str(j.get("url") or "").strip() for j in merged if str(j.get("url") or "").strip()
-    }
+    # Guarda no state apenas URLs realmente persistidas no JSON final.
+    seen_now = {str(j.get("url") or "").strip() for j in filtered if str(j.get("url") or "").strip()}
     save_state(
         auto_state_file,
         {
